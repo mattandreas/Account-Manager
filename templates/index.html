@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap@4.6.0/dist/css/bootstrap.min.css"/>
+    <link type="text/css" rel="stylesheet" href="//unpkg.com/bootstrap-vue@2.21.2/dist/bootstrap-vue.min.css"/>
+    <script src="//unpkg.com/vue@2.6.12/dist/vue.min.js"></script>
+    <script src="//unpkg.com/bootstrap-vue@2.21.2/dist/bootstrap-vue.min.js"></script>
+    <script src="//unpkg.com/axios@0.21.1/dist/axios.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
+    <script type="module" src="{{ url_for('static', filename = 'app.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename = 'launcherSettings.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename = 'MMFSettings.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename = 'mudSettings.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename = 'tanSettings.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename = 'ringsSettings.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename = 'pizzaSettings.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename = 'muleSettings.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename = 'redEggsSettings.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename = 'wineSettings.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename = 'plankSettings.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename = 'spinSettings.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename = 'updateModal.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename = 'settingsModal.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename = 'addAccountModal.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename = 'addVpsModal.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename = 'addGroupModal.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename = 'groupActionModal.js') }}"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles.css') }}">
+</head>
+<body style="background-color: #F8F8FF">
+<div id="app">
+    <b-tabs card pills vertical class="min-vh-100" v-cloak>
+        <b-tab title="Control">
+            <b-row>
+                <b-col>
+                    <b-row>
+                        <b-col md="auto">
+                            <h1>VPS</h1>
+                        </b-col>
+                        <b-col>
+                            <b-button v-b-modal="'group_action' + 'start'" class="mt-2">Start Group</b-button>
+                            <group_action_modal action="start"></group_action_modal>
+                            <b-button v-b-modal="'group_action' + 'kill'" class="mt-2">Kill Group</b-button>
+                            <group_action_modal action="kill"></group_action_modal>
+                            <b-button v-b-modal="'group_action' + 'delete'" class="mt-2">Delete Group</b-button>
+                            <group_action_modal action="delete"></group_action_modal>
+                            <b-button v-b-modal.update-files class="mt-2">Update</b-button>
+                            <update_files_modal></update_files_modal>
+<!--                            <b-button @click="rebootAll" class="mt-2">Reboot All</b-button>-->
+<!--                            <b-button @click="vncserverAll" class="mt-2">VNC Server All</b-button>-->
+                            <b-dropdown text="Reboot All" no-caret class="mt-2">
+                                <b-dropdown-item @click="rebootAll">
+                                    Confirm
+                                </b-dropdown-item>
+                            </b-dropdown>
+                            <b-dropdown text="VNC Server All" no-caret class="mt-2">
+                                <b-dropdown-item @click="vncserverAll">
+                                    Confirm
+                                </b-dropdown-item>
+                            </b-dropdown>
+                            <b-button v-b-modal="'group_action' + 'remove_account_ages'" class="mt-2">
+                                Remove Ages
+                            </b-button>
+                            <group_action_modal action="remove_account_ages"
+                                                display="Remove Account Ages From"></group_action_modal>
+                        </b-col>
+                    </b-row>
+                    <b-card no-body class="mt-2">
+                        <b-tabs card>
+                            <!--                    @changed="groupTabsChanged" v-model="group_tab">-->
+                            <b-tab v-for="group in vpsGroups" :title="group" lazy>
+                                <b-tabs content-class="mt-3">
+                                    <!--                            @changed="vpsTabsChanged(group)" v-model="vps_tabs[group]">-->
+                                    <b-tab v-for="vps in vpsList" v-if="vps.group == group" :title="vps.ip" lazy>
+                                        <b-card-text>
+                                            <p>port: [[vps.port]], username: [[vps.username]], password:
+                                                [[vps.password]]</p>
+                                            <b-row v-for="account in vps.accounts">
+                                                <b-col>
+                                                    <p :style="getColor(account.username)">[[account.username]]</p>
+                                                </b-col>
+                                                <b-col>
+                                                    <b-button @click="assignAccountTo(account.username, null)">
+                                                        Un-assign
+                                                    </b-button>
+                                                    <b-button @click="killOne(account.username)">Kill</b-button>
+                                                    <b-dropdown text="Start">
+                                                        <b-dropdown-item v-for="script in scriptsAndConfigs"
+                                                                         @click="startOne(account.username, script.value)">
+                                                            <span v-html="script.text"></span>
+                                                        </b-dropdown-item>
+                                                    </b-dropdown>
+                                                </b-col>
+                                            </b-row>
+                                            <b-dropdown text="Assign To">
+                                                <b-dropdown-item v-for="group2 in vpsGroups"
+                                                                 v-if="group2 != group"
+                                                                 @click="assignVps(vps.ip, group2)">
+                                                    <span v-html="group2"></span>
+                                                </b-dropdown-item>
+                                            </b-dropdown>
+                                            <b-dropdown text="-" no-caret>
+                                                <b-dropdown-item @click="deleteVpsButtonClick(vps.ip)">
+                                                    Delete VPS
+                                                </b-dropdown-item>
+                                            </b-dropdown>
+                                        </b-card-text>
+                                    </b-tab>
+                                    <template v-slot:tabs-end>
+                                        <b-nav-item v-b-modal="'add-vps' + group"><b>+</b></b-nav-item>
+                                        <add_vps_modal :group_name="group"></add_vps_modal>
+                                    </template>
+                                </b-tabs>
+                            </b-tab>
+                            <template v-slot:tabs-end>
+                                <b-nav-item v-b-modal.add-group><b>+</b></b-nav-item>
+                                <add_group_modal></add_group_modal>
+                            </template>
+                        </b-tabs>
+                    </b-card>
+                </b-col>
+                <b-col>
+                    <b-row>
+                        <b-col md="auto"><h1>Available Accounts</h1></b-col>
+                        <b-col>
+                            <b-button v-b-modal.add-account class="mt-2">Add New</b-button>
+                            <add_account_modal></add_account_modal>
+                            <b-button v-b-modal.account-import class="mt-2">Import Accounts</b-button>
+                            <b-modal id="account-import"
+                                     ref="modal"
+                                     title="Import Accounts"
+                                     @show="resetImportModal"
+                                     @hidden="resetImportModal"
+                                     @ok="handleImportOk">
+                                <form ref="form" @submit.stop.prevent="handleImportSubmit">
+                                    <b-form-group :state="importValidation"
+                                                  label-for="text-input"
+                                                  invalid-feedback="Cannot be empty">
+                                        <b-form-textarea id="text-input"
+                                                         v-model="import_text"
+                                                         :state="importValidation"
+                                                         placeholder="Enter Accounts"
+                                                         rows="3"
+                                                         max-rows="12"
+                                                         required></b-form-textarea>
+                                    </b-form-group>
+                                </form>
+                            </b-modal>
+                            <b-dropdown text="Auto Assign" class="mt-2">
+                                <b-dropdown-item v-for="group in vpsGroups"
+                                                 @click="autoAssign(group)">
+                                    <span v-html="group"></span>
+                                </b-dropdown-item>
+                            </b-dropdown>
+                            <b-button v-b-modal.settings class="mt-2">Settings</b-button>
+                            <settings_modal></settings_modal>
+                            <b-button @click="deleteAll" class="mt-2">Delete All</b-button>
+                        </b-col>
+                    </b-row>
+                    <b-list-group class="mt-2">
+                        <b-list-group-item v-for="account in accountList">
+                            <b-row>
+                                <b-col>
+                                    <div v-if="account.proxy_username != null">
+                                        username: [[account.username]],
+                                        password: [[account.password]],
+                                        proxy: [[account.proxy_ip]]:[[account.proxy_port]]:[[account.proxy_username]]:[[account.proxy_password]]
+                                    </div>
+                                    <div v-else>
+                                        username: [[account.username]],
+                                        password: [[account.password]],
+                                        proxy: [[account.proxy_ip]]:[[account.proxy_port]]
+                                    </div>
+                                </b-col>
+                                <b-col>
+                                    <b-dropdown text="Assign">
+                                        <b-dropdown-item-button v-for="vps in vpsList"
+                                                                @click="assignAccountTo(account.username, vps.ip)">
+                                            [[vps.ip]]
+                                        </b-dropdown-item-button>
+                                    </b-dropdown>
+                                </b-col>
+                                <b-col>
+                                    <b-button @click="deleteAccountButtonClick(account.username)">-</b-button>
+                                </b-col>
+                            </b-row>
+                        </b-list-group-item>
+                    </b-list-group>
+                </b-col>
+            </b-row>
+        </b-tab>
+        <b-tab title="Status">
+            <b-row>
+                <b-button @click="getStatuses">
+                    Get Status
+                </b-button>
+            </b-row>
+            <b-row v-for="group in vpsGroups">
+                <b-col>
+                    <b-row>
+                        <b-button v-b-toggle="group.replace(/\s+/g, '')" class="mt-2">
+                            [[ group ]]
+                        </b-button>
+                    </b-row>
+                    <b-row>
+                        <b-collapse :id="group.replace(/\s+/g, '')" class="w-100 mt-2">
+                            <b-card>
+                                <b-row v-for="vps in vpsList" v-if="vps.group == group && vps.accounts.length > 0">
+                                    <b-col>
+                                        <b-row class="mt-1">
+                                            [[ vps.ip ]]
+                                        </b-row>
+                                        <b-row>
+                                            <b-list-group class="w-100">
+                                                <b-list-group-item v-for="account in vps.accounts">
+                                                    [[ account.username ]]: [[ statuses[account.username] || 'none' ]]
+                                                </b-list-group-item>
+                                            </b-list-group>
+                                        </b-row>
+                                    </b-col>
+                                </b-row>
+                            </b-card>
+                        </b-collapse>
+                    </b-row>
+                </b-col>
+            </b-row>
+            <b-overlay :show="loading" no-wrap></b-overlay>
+        </b-tab>
+    </b-tabs>
+</div>
+</body>
+</html>
